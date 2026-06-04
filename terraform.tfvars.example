@@ -1,0 +1,28 @@
+# =============================================================================
+# Azure Dev Environment - Configuration
+# =============================================================================
+
+# Azure Configuration
+subscription_id = "YOUR_SUBSCRIPTION_ID"
+location        = "eastus"
+project_name    = "my-dev-env"
+environment     = "dev"
+
+# Network Configuration
+vnet_address_space    = "10.0.0.0/16"
+public_subnet_prefix  = "10.0.1.0/24"
+private_subnet_prefix = "10.0.2.0/24"
+
+# IMPORTANT: Restrict to your IP for security!
+# Find your IP: curl ifconfig.me
+allowed_ssh_cidr = "YOUR_IP/32"
+
+# Compute Configuration
+vm_size        = "Standard_B2s"
+disk_size_gb   = 30
+admin_username = "azuredev"
+public_key_path = "~/.ssh/id_rsa.pub"
+
+# Git Configuration
+git_user_name  = "Your Name"
+git_user_email = "your@email.com"
