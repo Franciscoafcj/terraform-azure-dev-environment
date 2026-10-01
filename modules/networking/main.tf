@@ -89,57 +89,7 @@ resource "azurerm_network_security_group" "dev" {
     destination_address_prefix = "*"
   }
 
-  # VS Code Server
-  security_rule {
-    name                       = "AllowVSCodeServer"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8080"
-    source_address_prefix      = var.allowed_ssh_cidr
-    destination_address_prefix = "*"
-  }
 
-  # Node.js / React dev server
-  security_rule {
-    name                       = "AllowAppPort3000"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "3000"
-    source_address_prefix      = var.allowed_ssh_cidr
-    destination_address_prefix = "*"
-  }
-
-  # Django / FastAPI dev server
-  security_rule {
-    name                       = "AllowAppPort8000"
-    priority                   = 130
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8000"
-    source_address_prefix      = var.allowed_ssh_cidr
-    destination_address_prefix = "*"
-  }
-
-  # HTTPS dev server
-  security_rule {
-    name                       = "AllowAppPort8443"
-    priority                   = 140
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8443"
-    source_address_prefix      = var.allowed_ssh_cidr
-    destination_address_prefix = "*"
-  }
 }
 
 # Associate NSG with public subnet

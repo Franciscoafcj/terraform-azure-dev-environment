@@ -53,7 +53,7 @@ resource "azurerm_linux_virtual_machine" "dev" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file(var.public_key_path)
+    public_key = file(pathexpand(var.public_key_path))
   }
 
   os_disk {
@@ -71,9 +71,9 @@ resource "azurerm_linux_virtual_machine" "dev" {
   }
 
   custom_data = base64encode(templatefile("${path.module}/scripts/user_data.sh", {
-    git_user_name  = var.git_user_name
-    git_user_email = var.git_user_email
-    admin_username = var.admin_username
+    git_user_name_b64  = base64encode(var.git_user_name)
+    git_user_email_b64 = base64encode(var.git_user_email)
+    admin_username     = var.admin_username
   }))
 
   # Disable password authentication for security

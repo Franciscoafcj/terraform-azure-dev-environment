@@ -48,7 +48,10 @@ variable "private_subnet_prefix" {
 variable "allowed_ssh_cidr" {
   description = "CIDR block allowed to access SSH and dev ports. IMPORTANT: Restrict to your IP for security (e.g., YOUR_IP/32)"
   type        = string
-  default     = "*"
+  validation {
+    condition     = can(cidrnetmask(var.allowed_ssh_cidr)) && try(tonumber(split("/", var.allowed_ssh_cidr)[1]) >= 24, false)
+    error_message = "Use an explicit IPv4 CIDR between /24 and /32; prefer your public IP/32."
+  }
 }
 
 # --- Compute Configuration ---
@@ -62,12 +65,20 @@ variable "disk_size_gb" {
   description = "Size of the OS disk in GB"
   type        = number
   default     = 30
+  validation {
+    condition     = var.disk_size_gb >= 30 && var.disk_size_gb <= 4095 && floor(var.disk_size_gb) == var.disk_size_gb
+    error_message = "OS disk size must be an integer between 30 and 4095 GiB."
+  }
 }
 
 variable "admin_username" {
   description = "Admin username for the VM"
   type        = string
   default     = "azuredev"
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9_-]{0,31}$", var.admin_username)) && !contains(["root", "admin", "administrator"], var.admin_username)
+    error_message = "Use a non-reserved Linux username starting with a lowercase letter (maximum 32 characters)."
+  }
 }
 
 variable "public_key_path" {

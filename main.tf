@@ -18,14 +18,14 @@ resource "azurerm_resource_group" "main" {
 module "networking" {
   source = "./modules/networking"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  vnet_address_space  = var.vnet_address_space
+  project_name          = var.project_name
+  environment           = var.environment
+  location              = azurerm_resource_group.main.location
+  resource_group_name   = azurerm_resource_group.main.name
+  vnet_address_space    = var.vnet_address_space
   public_subnet_prefix  = var.public_subnet_prefix
   private_subnet_prefix = var.private_subnet_prefix
-  allowed_ssh_cidr    = var.allowed_ssh_cidr
+  allowed_ssh_cidr      = var.allowed_ssh_cidr
 }
 
 # --- Compute Module ---

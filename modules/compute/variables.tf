@@ -27,6 +27,10 @@ variable "admin_username" {
   description = "Admin username for the VM"
   type        = string
   default     = "azuredev"
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9_-]{0,31}$", var.admin_username)) && !contains(["root", "admin", "administrator"], var.admin_username)
+    error_message = "Use a non-reserved Linux username starting with a lowercase letter (maximum 32 characters)."
+  }
 }
 
 variable "public_key_path" {
@@ -39,6 +43,10 @@ variable "disk_size_gb" {
   description = "OS disk size in GB"
   type        = number
   default     = 30
+  validation {
+    condition     = var.disk_size_gb >= 30 && var.disk_size_gb <= 4095 && floor(var.disk_size_gb) == var.disk_size_gb
+    error_message = "OS disk size must be an integer between 30 and 4095 GiB."
+  }
 }
 
 variable "project_name" {

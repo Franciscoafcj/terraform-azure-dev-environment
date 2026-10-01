@@ -13,13 +13,13 @@ output "vm_public_ip" {
 }
 
 output "vscode_server_url" {
-  description = "URL to access VS Code Server in the browser"
-  value       = "http://${module.compute.vm_public_ip}:8080"
+  description = "Local URL available after opening the SSH tunnel"
+  value       = "http://127.0.0.1:8080"
 }
 
 output "ssh_command" {
   description = "SSH command to connect to the dev VM"
-  value       = "ssh -i ~/.ssh/id_rsa ${var.admin_username}@${module.compute.vm_public_ip}"
+  value       = "ssh ${var.admin_username}@${module.compute.vm_public_ip}"
 }
 
 output "vnet_id" {
@@ -30,4 +30,9 @@ output "vnet_id" {
 output "vm_name" {
   description = "Name of the dev VM"
   value       = module.compute.vm_name
+}
+
+output "vscode_tunnel_command" {
+  description = "Keep this SSH tunnel running while using the local editor URL"
+  value       = "ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8080:127.0.0.1:8080 ${var.admin_username}@${module.compute.vm_public_ip}"
 }

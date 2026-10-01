@@ -1,314 +1,199 @@
-# ☁️ Terraform Azure Dev Environment
+# Ambiente de desenvolvimento na Azure com Terraform
 
-[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
-[![Azure](https://img.shields.io/badge/Azure-Cloud-0078D4?logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![IaC](https://img.shields.io/badge/IaC-Infrastructure%20as%20Code-success)](https://en.wikipedia.org/wiki/Infrastructure_as_code)
+Infraestrutura como código para criar uma VM Ubuntu 24.04 LTS com Docker, Node.js 24, Python, Go, Terraform, Azure CLI e code-server.
 
-> **Seu ambiente de desenvolvimento completo na Azure em um único comando.** 🚀
+O projeto demonstra provisionamento modular, configuração automatizada e testes de infraestrutura sem credenciais de nuvem. É um **laboratório de desenvolvimento**, não uma plataforma pronta para produção.
 
-Provisione uma VM Linux na Azure totalmente configurada com Docker, VS Code Server, Node.js, Python, Go, Terraform e Azure CLI — tudo automatizado com Terraform e boas práticas de IaC.
+## Arquitetura
 
----
-
-## 📐 Arquitetura
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Azure Cloud                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Resource Group (my-dev-env-dev-rg)            │  │
-│  │                                                            │  │
-│  │  ┌─────────────────────────────────────────────────────┐   │  │
-│  │  │           VNet (10.0.0.0/16)                        │   │  │
-│  │  │                                                     │   │  │
-│  │  │  ┌──────────────────────┐  ┌─────────────────────┐  │   │  │
-│  │  │  │  Public Subnet       │  │  Private Subnet     │  │   │  │
-│  │  │  │  10.0.1.0/24         │  │  10.0.2.0/24        │  │   │  │
-│  │  │  │                      │  │                     │  │   │  │
-│  │  │  │  ┌────────────────┐  │  │  (Future expansion) │  │   │  │
-│  │  │  │  │  Linux VM      │  │  │                     │  │   │  │
-│  │  │  │  │  Standard_B2s  │  │  │                     │  │   │  │
-│  │  │  │  │                │  │  │                     │  │   │  │
-│  │  │  │  │  🐳 Docker     │  │  │                     │  │   │  │
-│  │  │  │  │  📝 VS Code    │  │  │                     │  │   │  │
-│  │  │  │  │  🟢 Node.js    │  │  │                     │  │   │  │
-│  │  │  │  │  🐍 Python     │  │  │                     │  │   │  │
-│  │  │  │  │  🔵 Go         │  │  │                     │  │   │  │
-│  │  │  │  │  🏗️ Terraform  │  │  │                     │  │   │  │
-│  │  │  │  │  ☁️ Azure CLI   │  │  │                     │  │   │  │
-│  │  │  │  └───────┬────────┘  │  │         │           │  │   │  │
-│  │  │  │          │           │  └─────────┼───────────┘  │   │  │
-│  │  │  └──────────┼───────────┘            │              │   │  │
-│  │  │             │                 ┌──────┴──────┐       │   │  │
-│  │  │      ┌──────┴──────┐         │ NAT Gateway │       │   │  │
-│  │  │      │  Public IP  │         └─────────────┘       │   │  │
-│  │  │      └──────┬──────┘                                │   │  │
-│  │  └─────────────┼──────────────────────────────────────┘   │  │
-│  │                │                                           │  │
-│  │    ┌───────────┴────────────┐                              │  │
-│  │    │  Network Security Group│                              │  │
-│  │    │  :22   SSH             │                              │  │
-│  │    │  :8080 VS Code Server  │                              │  │
-│  │    │  :3000 Node/React      │                              │  │
-│  │    │  :8000 Django/FastAPI   │                              │  │
-│  │    │  :8443 HTTPS           │                              │  │
-│  │    └───────────┬────────────┘                              │  │
-│  └────────────────┼───────────────────────────────────────────┘  │
-│                   │                                              │
-└───────────────────┼──────────────────────────────────────────────┘
-                    │
-              ┌─────┴─────┐
-              │ Internet  │
-              └───────────┘
+```mermaid
+flowchart LR
+  PC["Seu computador / IP autorizado"] -->|"SSH :22"| NSG["NSG"]
+  NSG --> VM["Ubuntu 24.04 / subnet pública"]
+  PC -. "Túnel SSH local :8080" .-> IDE["code-server 127.0.0.1:8080"]
+  VM --- IDE
+  VM --- DEV["Docker + ferramentas"]
+  PRIVATE["Subnet privada reservada"] --> NAT["NAT Gateway"] --> INTERNET["Internet"]
 ```
 
----
+- Módulo **networking**: VNet, duas subnets, NSG, NAT Gateway e IP de saída.
+- Módulo **compute**: IP público, interface de rede, VM e bootstrap.
+- Apenas a porta SSH possui regra de entrada explícita, limitada ao CIDR informado.
+- O editor escuta em loopback e usa autenticação por senha, acessível através do túnel.
+- A subnet privada está reservada para expansão. O NAT Gateway continua gerando cobrança mesmo sem workloads nela; não é necessário para o editor na VM pública.
 
-## 🛠️ Ferramentas Instaladas
+## Pré-requisitos
 
-| Ferramenta | Versão | Descrição |
-|------------|--------|-----------|
-| 🐳 Docker + Compose | Latest + v2 | Containerização e orquestração |
-| 📝 VS Code Server | Latest | IDE no navegador (porta 8080) |
-| 🟢 Node.js | 20 LTS | Runtime JavaScript |
-| 🐍 Python 3 | + pip + venv | Desenvolvimento Python |
-| 🔵 Go | 1.22.4 | Linguagem Go |
-| 🏗️ Terraform | Latest | Infrastructure as Code |
-| ☁️ Azure CLI | Latest | Interface de linha de comando Azure |
-| 🔧 Git | Pré-configurado | Controle de versão |
-| 📊 htop, jq, tree | Latest | Ferramentas utilitárias |
+- Terraform **1.7+ e inferior a 2.0** (testado com 1.14.7).
+- Azure CLI autenticada e assinatura com permissões para os recursos.
+- Cliente OpenSSH e par de chaves RSA de pelo menos 2048 bits.
+- Bash e PowerShell para executar a suíte de bootstrap; Make é opcional.
 
----
-
-## 🚀 Quick Start
-
-### Pré-requisitos
-
-- [Terraform](https://www.terraform.io/downloads) >= 1.5.0
-- [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) instalado e autenticado (`az login`)
-- Uma **Subscription ID** do Azure
-- Par de chaves SSH (`~/.ssh/id_rsa.pub`)
-
-### 1. Clone o repositório
+## Criar o ambiente
 
 ```bash
-git clone https://github.com/SEU_USUARIO/terraform-azure-dev-environment.git
+git clone https://github.com/Franciscoafcj/terraform-azure-dev-environment.git
 cd terraform-azure-dev-environment
-```
-
-### 2. Configure as variáveis
-
-```bash
 cp terraform.tfvars.example terraform.tfvars
-```
-
-Edite o `terraform.tfvars` com seus valores:
-
-```hcl
-# Azure Subscription
-subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-
-# ⚠️ IMPORTANTE: Restrinja ao seu IP para segurança!
-# Descubra seu IP: curl ifconfig.me
-allowed_ssh_cidr = "SEU_IP/32"
-
-# Configuração Git
-git_user_name  = "Seu Nome"
-git_user_email = "seu@email.com"
-```
-
-### 3. Autentique no Azure
-
-```bash
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/azure-dev
 az login
-az account set --subscription "YOUR_SUBSCRIPTION_ID"
 ```
 
-### 4. Deploy
+No PowerShell, use `Copy-Item terraform.tfvars.example terraform.tfvars`.
+Edite os valores de `subscription_id`, `allowed_ssh_cidr`, identidade Git e `public_key_path`.
+Use seu IP público seguido de `/32`; o projeto aceita apenas IPv4 entre `/24` e `/32`.
+Selecione a mesma assinatura no Azure CLI:
 
 ```bash
-# Inicializar o Terraform
-make init
-
-# Visualizar as mudanças
-make plan
-
-# Aplicar a infraestrutura
-make apply
+az account set --subscription SEU_SUBSCRIPTION_ID
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan -out=dev.tfplan
+terraform apply dev.tfplan
 ```
 
-### 5. Acesse seu ambiente
+Leia o plano antes de aplicar: estes comandos criam recursos cobrados na Azure.
+O arquivo de plano e o estado podem conter dados sensíveis; mantenha-os fora do Git.
+A chave privada fica exclusivamente no seu computador.
+
+## Acessar o editor
+
+Consulte o IP e o comando de túnel:
 
 ```bash
-# Ver os outputs
-make output
-
-# Acessar via SSH
-make ssh
-
-# Ou acesse o VS Code Server no navegador
-# http://<vm-public-ip>:8080
+terraform output vm_public_ip
+terraform output vscode_tunnel_command
 ```
 
-> 💡 **Dica:** A senha do VS Code Server está em `/home/azuredev/.config/code-server/config.yaml` na VM. Acesse com:
-> ```bash
-> ssh azuredev@<IP> cat ~/.config/code-server/config.yaml
-> ```
-
-### 6. Destruir (quando terminar)
+Se usou uma chave específica, acrescente `-i ~/.ssh/azure-dev`:
 
 ```bash
-make destroy
+ssh -i ~/.ssh/azure-dev -N -o ExitOnForwardFailure=yes -L 127.0.0.1:8080:127.0.0.1:8080 azuredev@IP_DA_VM
 ```
 
----
-
-## 📁 Estrutura do Projeto
-
-```
-terraform-azure-dev-environment/
-├── main.tf                          # Módulo raiz - Resource Group + módulos
-├── variables.tf                     # Variáveis de entrada do projeto
-├── outputs.tf                       # Outputs (IP, SSH, VS Code URL)
-├── versions.tf                      # Terraform >= 1.5 + azurerm ~> 4.0
-├── terraform.tfvars.example         # Exemplo de configuração
-├── Makefile                         # Comandos automatizados
-├── .gitignore                       # Arquivos ignorados pelo Git
-├── LICENSE                          # Licença MIT
-├── README.md                        # Este arquivo
-└── modules/
-    ├── networking/                   # Módulo de rede
-    │   ├── main.tf                  # VNet, subnets, NSG, NAT Gateway
-    │   ├── variables.tf             # Variáveis de rede
-    │   └── outputs.tf               # Outputs de rede
-    └── compute/                     # Módulo de computação
-        ├── main.tf                  # VM, NIC, Public IP
-        ├── variables.tf             # Variáveis de computação
-        ├── outputs.tf               # Outputs de computação
-        └── scripts/
-            └── user_data.sh         # Cloud-init bootstrap script
-```
-
----
-
-## ⚙️ Variáveis
-
-| Variável | Tipo | Default | Descrição |
-|----------|------|---------|-----------|
-| `subscription_id` | string | — | ID da subscription Azure **(obrigatório)** |
-| `location` | string | `eastus` | Região Azure |
-| `project_name` | string | `dev-environment` | Nome do projeto |
-| `environment` | string | `dev` | Ambiente |
-| `vnet_address_space` | string | `10.0.0.0/16` | Address space da VNet |
-| `public_subnet_prefix` | string | `10.0.1.0/24` | Prefixo da subnet pública |
-| `private_subnet_prefix` | string | `10.0.2.0/24` | Prefixo da subnet privada |
-| `allowed_ssh_cidr` | string | `*` | CIDR permitido para acesso |
-| `vm_size` | string | `Standard_B2s` | Tamanho da VM |
-| `disk_size_gb` | number | `30` | Tamanho do disco OS (GB) |
-| `admin_username` | string | `azuredev` | Usuário admin da VM |
-| `public_key_path` | string | `~/.ssh/id_rsa.pub` | Caminho da chave pública SSH |
-| `git_user_name` | string | `Developer` | Nome para config do Git |
-| `git_user_email` | string | `dev@example.com` | Email para config do Git |
-
----
-
-## 📤 Outputs
-
-| Output | Descrição |
-|--------|-----------|
-| `resource_group_name` | Nome do Resource Group |
-| `vm_public_ip` | IP público da VM |
-| `vscode_server_url` | URL do VS Code Server |
-| `ssh_command` | Comando SSH pronto para usar |
-| `vnet_id` | ID da VNet criada |
-| `vm_name` | Nome da VM |
-
----
-
-## 💰 Estimativa de Custos
-
-| Recurso | Custo Estimado (East US) |
-|---------|--------------------------|
-| VM Standard_B2s (2 vCPU, 4GB RAM) | ~$30.37/mês |
-| Premium SSD 30GB (P4) | ~$5.28/mês |
-| Public IP (Static/Standard) | ~$3.65/mês |
-| NAT Gateway | ~$32.40/mês |
-| **Total estimado** | **~$71.70/mês** |
-
-> 💡 **Dica:** Destrua o ambiente quando não estiver usando: `make destroy`
-
-> 💡 **Alternativa econômica:** Use `Standard_B1s` (~$7.59/mês) para tarefas leves, ou remova o NAT Gateway se não precisar da subnet privada (-$32/mês).
-
----
-
-## 🔒 Boas Práticas de Segurança
-
-Este projeto implementa:
-
-- ✅ **Autenticação somente SSH** — Senha desabilitada
-- ✅ **Disco Premium criptografado** — Dados em repouso protegidos
-- ✅ **NSG restritivo** — Apenas portas necessárias abertas
-- ✅ **Subnet privada** — Preparada para workloads isolados
-- ✅ **NAT Gateway** — Acesso à internet sem exposição
-- ✅ **Resource Group dedicado** — Isolamento de recursos
-
-> ⚠️ **IMPORTANTE:** Sempre restrinja `allowed_ssh_cidr` ao seu IP público (`SEU_IP/32`). Nunca use `*` em produção!
-
----
-
-## 🧰 Makefile Commands
+Mantenha esse terminal aberto. No navegador, acesse **http://127.0.0.1:8080**.
+Para obter a senha, abra outra sessão SSH e execute:
 
 ```bash
-make help      # Lista todos os comandos disponíveis
-make init      # Inicializa o Terraform
-make plan      # Mostra o plano de execução
-make apply     # Aplica a infraestrutura
-make destroy   # Destrói toda a infraestrutura
-make fmt       # Formata os arquivos .tf
-make validate  # Valida a configuração
-make output    # Mostra os outputs
-make ssh       # Conecta via SSH na VM
-make clean     # Remove arquivos locais do Terraform
+cat ~/.config/code-server/config.yaml
 ```
 
----
+A senha é gerada na VM, protegida com modo `600` e não é escrita deliberadamente nos logs de provisionamento.
+Os outputs SSH usam o agente/configuração padrão; informe `-i` quando necessário.
+Para uma aplicação na porta 3000, adicione outro encaminhamento local:
+`-L 127.0.0.1:3000:127.0.0.1:3000`.
 
-## 🔄 Recursos Azure Provisionados
+## Verificar a instalação na VM
 
-| Recurso | Tipo Azure | Descrição |
-|---------|-----------|-----------|
-| Resource Group | `azurerm_resource_group` | Container lógico para todos os recursos |
-| Virtual Network | `azurerm_virtual_network` | Rede virtual isolada |
-| Public Subnet | `azurerm_subnet` | Subnet para recursos com acesso público |
-| Private Subnet | `azurerm_subnet` | Subnet para recursos isolados |
-| NSG | `azurerm_network_security_group` | Firewall de rede (5 regras) |
-| NAT Gateway | `azurerm_nat_gateway` | Acesso à internet para subnet privada |
-| Public IP (VM) | `azurerm_public_ip` | IP estático para a VM |
-| Public IP (NAT) | `azurerm_public_ip` | IP estático para o NAT Gateway |
-| NIC | `azurerm_network_interface` | Interface de rede da VM |
-| Linux VM | `azurerm_linux_virtual_machine` | Ubuntu 24.04 LTS |
+O sucesso do Terraform **não significa que o bootstrap terminou**. Após conectar:
 
----
+```bash
+sudo cloud-init status --wait
+sudo tail -n 100 /var/log/user-data.log
+systemctl is-active docker
+systemctl is-active code-server@$USER
+docker compose version
+node --version
+python3 --version
+go version
+terraform version
+az version
+curl -I http://127.0.0.1:8080
+```
 
-## 🤝 Contribuindo
+Faça um novo login antes de usar Docker sem `sudo`, para carregar o grupo atualizado.
+O grupo Docker concede privilégios equivalentes a root.
 
-1. Faça um fork do projeto
-2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+## Testes sem Azure
 
----
+```bash
+terraform init -backend=false
+terraform fmt -check -recursive
+terraform validate
+terraform test
+pwsh -File tests/bootstrap.Tests.ps1
+```
 
-## 📝 Licença
+No Windows, execute o último teste no PowerShell e informe o Bash do Git:
+```powershell
+./tests/bootstrap.Tests.ps1 -Bash "C:/Program Files/Git/bin/bash.exe"
+```
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+A suíte usa o provider AzureRM **mockado**, sem criar recursos ou exigir login:
 
----
+| Verificação | Objetivo |
+| --- | --- |
+| Plano do módulo raiz | URL local do editor |
+| CIDRs inválidos, wildcard e acesso global | Rejeitar configuração de acesso inadequada |
+| Disco e usuário inválidos | Falhar antes do provisionamento |
+| NSG | Manter apenas SSH como entrada explicitamente liberada |
+| Bootstrap da VM | Senha SSH desabilitada, editor local e permissões restritas |
+| Script renderizado | Sintaxe Bash e identidade Git com aspas e comandos tratados como texto |
 
-## 🌟 Se este projeto te ajudou, deixe uma ⭐!
+A chave pública em `tests/fixtures/test.pub` é exclusivamente uma fixture de teste.
+A suíte não instala pacotes nem comprova quotas, disponibilidade de SKU, permissões da assinatura ou instalação real na VM.
+O workflow de CI executa essas mesmas verificações com permissão somente de leitura.
 
-<p align="center">
-  <b>Feito com ❤️ e Terraform</b>
-</p>
+## Configuração
+
+| Variável | Padrão / requisito |
+| --- | --- |
+| `subscription_id` | Obrigatória |
+| `allowed_ssh_cidr` | Obrigatória; IPv4 /24 a /32; prefira /32 |
+| `location` | `eastus` |
+| `project_name` / `environment` | `dev-environment` / `dev` |
+| `vm_size` | `Standard_B2s` (imagem x86-64) |
+| `disk_size_gb` | 30 GiB; inteiro entre 30 e 4095 |
+| `admin_username` | `azuredev` |
+| `public_key_path` | `~/.ssh/id_rsa.pub`; suporta expansão de ~ |
+| `git_user_name` / `git_user_email` | Identidade Git configurada no usuário da VM |
+| `vnet_address_space` | `10.0.0.0/16` |
+| `public_subnet_prefix` / `private_subnet_prefix` | `10.0.1.0/24` / `10.0.2.0/24` |
+
+As subnets devem ser distintas, não sobrepostas e contidas na VNet; ajuste-as juntas.
+Veja `variables.tf` para descrições completas. Go e Python vêm dos repositórios do Ubuntu.
+O lockfile fixa o provider. A imagem Ubuntu e alguns instaladores usam versões atualizadas upstream, portanto o ambiente ainda não é totalmente reproduzível.
+
+## Custos, estado e remoção
+
+Os custos incluem VM, disco Premium, IPs públicos, NAT Gateway e tráfego. Consulte a [calculadora Azure](https://azure.microsoft.com/pricing/calculator/) para sua região e assinatura. Parar a VM não remove cobranças de disco, IP e NAT.
+
+```bash
+terraform plan -destroy
+terraform destroy
+```
+
+O Makefile preserva confirmação em `apply` e `destroy`. `make clean` remove apenas o cache `.terraform`, preservando estado e lockfile. **Não apague o estado para tentar remover recursos.**
+O backend padrão é local: faça backup seguro do estado e configure um backend remoto com controle de acesso e locking antes de trabalhar em equipe.
+
+## Atualização de ambientes existentes
+
+Esta versão remove as regras públicas 8080, 3000, 8000 e 8443, exige CIDR explícito e muda o editor para túnel SSH.
+Alterar `custom_data` pode substituir a VM; confira o plano e faça backup de arquivos da VM antes de aplicar.
+O NSG mantém as regras padrão da Azure, incluindo comunicação na rede virtual; isto não implementa isolamento completo de produção.
+
+## Estrutura
+
+```text
+main.tf / variables.tf / outputs.tf / versions.tf
+modules/
+  networking/                  # Rede e controle de acesso
+  compute/
+    scripts/user_data.sh       # Bootstrap renderizado pelo Terraform
+tests/
+  security.tftest.hcl           # Testes de planos com mocks
+  bootstrap.Tests.ps1           # Renderização e sintaxe Bash
+  fixtures/test.pub             # Chave pública de teste
+.github/workflows/validate.yml  # CI sem credenciais Azure
+```
+
+## Decisões técnicas
+
+- Túnel SSH evita publicar o editor via HTTP na internet.
+- Identidade Git codificada em Base64 impede que aspas ou substituições de comando virem código shell.
+- Docker Compose vem do pacote oficial já instalado, sem download duplicado.
+- Estado e lockfile são preservados para rastrear recursos e repetir a seleção do provider.
+- Instaladores externos e acesso privilegiado permanecem limitações de um laboratório; para produção, prefira imagens pré-construídas e verificadas.
+
+Licença [MIT](LICENSE).
