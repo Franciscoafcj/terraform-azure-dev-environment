@@ -33,7 +33,10 @@ variable "resource_group_name" {
 variable "allowed_ssh_cidr" {
   description = "CIDR block allowed to access SSH and dev ports. Restrict this to your public IP (e.g. \"203.0.113.10/32\") for better security."
   type        = string
-  default     = "*"
+  validation {
+    condition     = can(cidrnetmask(var.allowed_ssh_cidr)) && try(tonumber(split("/", var.allowed_ssh_cidr)[1]) >= 24, false)
+    error_message = "Use an explicit IPv4 CIDR between /24 and /32; prefer your public IP/32."
+  }
 }
 
 variable "project_name" {

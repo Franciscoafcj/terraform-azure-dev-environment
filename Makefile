@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy fmt validate output ssh clean
+.PHONY: help init plan apply destroy fmt validate test output ssh clean
 
 help: ## Show this help message
 	@echo "Available targets:"
@@ -14,15 +14,18 @@ plan: ## Show execution plan
 
 apply: ## Apply infrastructure changes
 	@echo "==> Applying infrastructure..."
-	terraform apply -auto-approve
+	terraform apply
 
 destroy: ## Destroy all infrastructure
 	@echo "==> Destroying infrastructure..."
-	terraform destroy -auto-approve
+	terraform destroy
 
 fmt: ## Format Terraform files
 	@echo "==> Formatting Terraform files..."
 	terraform fmt -recursive
+
+test: ## Run plan tests with mocked Azure provider (no cloud resources)
+	terraform test
 
 validate: ## Validate Terraform configuration
 	@echo "==> Validating configuration..."
@@ -39,5 +42,4 @@ ssh: ## SSH into the dev VM
 clean: ## Remove Terraform local files
 	@echo "==> Cleaning up..."
 	rm -rf .terraform
-	rm -f .terraform.lock.hcl
-	rm -f terraform.tfstate*
+	@echo "Preserving dependency lock and state files"
